@@ -1,8 +1,7 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-let screenWidth = canvas.width;
-let screenHeight = canvas.height;
+let screenWidth, screenHeight;
 
 // COLORS
 const BG = "#000000";
@@ -51,7 +50,7 @@ class Ball {
         this.vy *= friction;
 
         // Walls
-        if (this.x < ballRadius || this.x > screenWidth - ballRadius) {
+        if (this.x < ballRadiusScaled || this.x > screenWidth - ballRadiusScaled) {
             this.vx *= -0.7;
         }
 
@@ -60,7 +59,7 @@ class Ball {
             let dx = this.x - px;
             let dy = this.y - py;
             let dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < ballRadius + pegRadius) {
+            if (dist < ballRadiusScaled + pegRadiusScaled) {
                 let angle = Math.atan2(dy, dx);
                 this.vx = Math.cos(angle) * 1.4;
                 this.vy = Math.sin(angle) * 1.4;
@@ -74,10 +73,10 @@ class Ball {
 
         for (let i = 0; i <= slotLabels.length; i++) {
             let dividerX = binsStart + i * slotW;
-            if (Math.abs(this.x - dividerX) < ballRadius) {
+            if (Math.abs(this.x - dividerX) < ballRadiusScaled) {
                 if (this.y >= slotY && this.y <= slotY + slotHeight) {
                     this.vx *= -0.7;
-                    this.x += this.x < dividerX ? -ballRadius : ballRadius;
+                    this.x += this.x < dividerX ? -ballRadiusScaled : ballRadiusScaled;
                 }
             }
         }
@@ -88,11 +87,11 @@ class Ball {
 
     draw() {
         ctx.beginPath();
-        ctx.arc(this.x, this.y, ballRadius, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, ballRadiusScaled, 0, Math.PI * 2);
         ctx.fillStyle = "#FFEBC4";
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(this.x, this.y, ballRadius - 3, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, ballRadiusScaled - 3, 0, Math.PI * 2);
         ctx.fillStyle = "#FFB450";
         ctx.fill();
     }
@@ -100,17 +99,24 @@ class Ball {
 
 let balls = [];
 
+// SCALE VARIABLES
+let scale = 1;
+let pegRadiusScaled = pegRadius;
+let ballRadiusScaled = ballRadius;
+let pegSpacingXScaled = pegSpacingX;
+let pegSpacingYScaled = pegSpacingY;
+
 // BUILD PEGS
 function buildPegs() {
     pegLayout = [];
     let centerX = screenWidth / 2;
     for (let r = 0; r < pegRowsPattern.length; r++) {
         let cols = pegRowsPattern[r];
-        let rowWidth = (cols - 1) * pegSpacingX;
+        let rowWidth = (cols - 1) * pegSpacingXScaled;
         let startX = centerX - rowWidth / 2;
         for (let c = 0; c < cols; c++) {
-            let x = startX + c * pegSpacingX;
-            let y = pegStartY + r * pegSpacingY;
+            let x = startX + c * pegSpacingXScaled;
+            let y = pegStartY * scale + r * pegSpacingYScaled;
             pegLayout.push([x, y]);
         }
     }
@@ -124,21 +130,41 @@ function buildDividers() {
     for (let i = 0; i <= n; i++) dividerPositions.push(i * slotW);
 }
 
-buildPegs();
-buildDividers();
+// RESIZE CANVAS FOR MOBILE
+function resizeCanvas() {
+    canvas.width = window.innerWidth * 0.95;
+    canvas.height = window.innerHeight * 0.95;
+    screenWidth = canvas.width;
+    screenHeight = canvas.height;
 
-// INPUT
-window.addEventListener("keydown", e => {
-    if (e.code === "Space") balls.push(new Ball());
+    scale = screenWidth / 600; // base width
+    pegRadiusScaled = pegRadius * scale;
+    ballRadiusScaled = ballRadius * scale;
+    pegSpacingXScaled = pegSpacingX * scale;
+    pegSpacingYScaled = pegSpacingY * scale;
+
+    buildPegs();
+    buildDividers();
+}
+
+// Initial resize
+resizeCanvas();
+
+// Resize on window change
+window.addEventListener("resize", resizeCanvas);
+
+// CLICK / TAP INPUT
+canvas.addEventListener("click", () => balls.push(new Ball()));
+canvas.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    balls.push(new Ball());
 });
 
 // DRAW EVERYTHING
 function draw() {
-    // BG
     ctx.fillStyle = BG;
     ctx.fillRect(0, 0, screenWidth, screenHeight);
 
-    // FRAME & BOARD
     ctx.fillStyle = FRAME;
     ctx.fillRect(15, 15, screenWidth - 30, screenHeight - 30);
     ctx.fillStyle = BOARD;
@@ -147,7 +173,7 @@ function draw() {
     // Pegs
     for (let [x, y] of pegLayout) {
         ctx.beginPath();
-        ctx.arc(x, y, pegRadius, 0, Math.PI * 2);
+        ctx.arc(x, y, pegRadiusScaled, 0, Math.PI * 2);
         ctx.fillStyle = PEG_COLOR;
         ctx.fill();
     }
@@ -169,7 +195,7 @@ function draw() {
 
     // Slot labels
     ctx.fillStyle = TEXT;
-    ctx.font = "18px Arial";
+    ctx.font = `${18 * scale}px Arial`;
     ctx.textAlign = "center";
     for (let i = 0; i < slotLabels.length; i++) {
         let cx = binsStart + i * slotW + slotW / 2;
