@@ -11,7 +11,7 @@ const PEG_COLOR = "#D2D2DC";
 const TEXT = "#DCDCE6";
 const DIVIDER = "#AAAAFF";
 
-// PEG SETTINGS (base)
+// PEG SETTINGS
 const pegRadius = 5;
 const pegRowsPattern = [11, 12, 11, 12, 11, 12, 11];
 const pegSpacingX = 35;
@@ -25,30 +25,20 @@ const baseSlotHeight = 90;
 
 // BALL PHYSICS
 const ballRadius = 7;
-const gravityBase = 0.21;            // slightly heavier gravity
-const friction = 0.985;              // heavier air drag
+const gravityBase = 0.21;    
+const friction = 0.985;      
 
+// SCALED VALUES
 let pegLayout = [];
 let dividerPositions = [];
 
 let scale = 1;
-let pegRadiusScaled = pegRadius;
-let ballRadiusScaled = ballRadius;
+let pegRadiusScaled, ballRadiusScaled;
+let pegSpacingXScaled, pegSpacingYScaled, pegStartYScaled;
+let slotYScaled, slotHeightScaled, gravityScaled;
 
-let pegSpacingXScaled = pegSpacingX;
-let pegSpacingYScaled = pegSpacingY;
-let pegStartYScaled = pegStartY;
-
-let slotYScaled = baseSlotY;
-let slotHeightScaled = baseSlotHeight;
-
-let gravityScaled = gravityBase;
-
-// zigzag wall config
-let zigzagWalls = [];
-const zigzagSegments = 12;   // number of zig zags per side
-const zigzagWidthRatio = 0.06; // how far zig zag extends inward
-
+// DIAGONAL WALLS
+let diagonalWalls = [];
 
 // Build pegs
 function buildPegs() {
@@ -68,34 +58,32 @@ function buildPegs() {
     }
 }
 
+// Build diagonal walls (LEFT and RIGHT)
+function buildDiagonalWalls() {
+    diagonalWalls = [];
 
-// Build zig-zag side walls
-function buildZigZagWalls() {
-    zigzagWalls = [];
+    // Range from top of peg field to bins
+    const topY = pegStartYScaled - 20 * scale;
+    const bottomY = slotYScaled;
 
-    const zigWidth = screenWidth * zigzagWidthRatio;
-    const segmentH = (slotYScaled - pegStartYScaled) / zigzagSegments;
+    // left diagonal wall
+    diagonalWalls.push({
+        x1: screenWidth * 0.18,
+        y1: topY,
+        x2: screenWidth * 0.10,
+        y2: bottomY
+    });
 
-    let leftX1 = screenWidth * 0.08;
-    let rightX1 = screenWidth * 0.92;
-
-    for (let i = 0; i < zigzagSegments; i++) {
-        let y1 = pegStartYScaled + i * segmentH;
-        let y2 = y1 + segmentH;
-
-        let lxA = leftX1 + (i % 2 === 0 ? zigWidth : 0);
-        let lxB = leftX1 + (i % 2 === 1 ? zigWidth : 0);
-
-        let rxA = rightX1 - (i % 2 === 0 ? zigWidth : 0);
-        let rxB = rightX1 - (i % 2 === 1 ? zigWidth : 0);
-
-        zigzagWalls.push({ x1: lxA, y1, x2: lxB, y2 });
-        zigzagWalls.push({ x1: rxA, y1, x2: rxB, y2 });
-    }
+    // right diagonal wall
+    diagonalWalls.push({
+        x1: screenWidth * 0.82,
+        y1: topY,
+        x2: screenWidth * 0.90,
+        y2: bottomY
+    });
 }
 
-
-// Build bin dividers
+// Build dividers
 function buildDividers() {
     dividerPositions = [];
     const n = slotLabels.length;
@@ -109,7 +97,6 @@ function buildDividers() {
     }
 }
 
-
 // Resize canvas
 function resizeCanvas() {
     canvas.width = Math.floor(window.innerWidth * 0.95);
@@ -120,9 +107,9 @@ function resizeCanvas() {
 
     scale = screenWidth / 600;
 
-    // scaled values
     pegRadiusScaled = pegRadius * Math.max(0.6, scale);
-    ballRadiusScaled = ballRadius * Math.max(0.65, scale);
+    ballRadiusScaled = ballRadius * Math.max(0.6, scale);
+
     pegSpacingXScaled = pegSpacingX * scale;
     pegSpacingYScaled = pegSpacingY * scale;
     pegStartYScaled = pegStartY * scale;
@@ -134,16 +121,16 @@ function resizeCanvas() {
 
     buildPegs();
     buildDividers();
-    buildZigZagWalls();
+    buildDiagonalWalls();
 }
 
 
-// Ball object with heavy physics
+// Ball class
 class Ball {
     constructor() {
         this.x = screenWidth / 2;
         this.y = screenHeight * 0.05;
-        this.vx = (Math.random() - 0.5) * 1.2; // smaller initial speed
+        this.vx = (Math.random() - 0.5) * 0.8; 
         this.vy = 0;
         this.active = true;
     }
@@ -155,44 +142,40 @@ class Ball {
         this.x += this.vx;
         this.y += this.vy;
 
-        // heavy damping for heavy ball feel
         this.vx *= friction;
         this.vy *= friction;
 
-        // Side walls (simple)
+        // boundary walls
         if (this.x < ballRadiusScaled) {
             this.x = ballRadiusScaled;
-            this.vx *= -0.4;   // soft bounce
+            this.vx *= -0.4;
         }
         if (this.x > screenWidth - ballRadiusScaled) {
             this.x = screenWidth - ballRadiusScaled;
             this.vx *= -0.4;
         }
 
-        // Peg collisions (softer)
+        // peg collisions (soft)
         for (let [px, py] of pegLayout) {
             const dx = this.x - px;
             const dy = this.y - py;
             const dist = Math.hypot(dx, dy);
 
-            if (dist < ballRadiusScaled + pegRadiusScaled) {
+            if (dist < pegRadiusScaled + ballRadiusScaled) {
                 const angle = Math.atan2(dy, dx);
+                this.vx = Math.cos(angle) * 1.0;
+                this.vy = Math.sin(angle) * 1.0;
 
-                this.vx = Math.cos(angle) * 1.2; // softer bounce
-                this.vy = Math.sin(angle) * 1.2;
-
-                const overlap = (ballRadiusScaled + pegRadiusScaled) - dist;
+                const overlap = pegRadiusScaled + ballRadiusScaled - dist;
                 this.x += Math.cos(angle) * overlap;
                 this.y += Math.sin(angle) * overlap;
             }
         }
 
-        // Zig-zag wall collisions
-        for (let seg of zigzagWalls) {
-            const { x1, y1, x2, y2 } = seg;
-
-            const A = { x: x1, y: y1 };
-            const B = { x: x2, y: y2 };
+        // diagonal walls collision
+        for (let seg of diagonalWalls) {
+            const A = { x: seg.x1, y: seg.y1 };
+            const B = { x: seg.x2, y: seg.y2 };
             const P = { x: this.x, y: this.y };
 
             const ABx = B.x - A.x;
@@ -212,10 +195,8 @@ class Ball {
 
             if (dist < ballRadiusScaled) {
                 const angle = Math.atan2(dy, dx);
-
-                // softer but directional bounce
-                this.vx = Math.cos(angle) * 1.4;
-                this.vy = Math.sin(angle) * 1.4;
+                this.vx = Math.cos(angle) * 1.2;
+                this.vy = Math.sin(angle) * 1.2;
 
                 const overlap = ballRadiusScaled - dist;
                 this.x += Math.cos(angle) * overlap;
@@ -223,7 +204,7 @@ class Ball {
             }
         }
 
-        // Divider collisions (even softer)
+        // divider collisions
         const binsWidth = screenWidth * 0.8;
         const binsStart = (screenWidth - binsWidth) / 2;
         const slotW = binsWidth / slotLabels.length;
@@ -231,20 +212,13 @@ class Ball {
         for (let i = 0; i <= slotLabels.length; i++) {
             const dividerX = binsStart + i * slotW;
 
-            if (Math.abs(this.x - dividerX) < ballRadiusScaled * 1.1 &&
+            if (Math.abs(this.x - dividerX) < ballRadiusScaled * 1.15 &&
                 this.y >= slotYScaled && this.y <= slotYScaled + slotHeightScaled) {
-                if (this.x < dividerX) this.x = dividerX - ballRadiusScaled;
-                else this.x = dividerX + ballRadiusScaled;
-
-                this.vx *= -0.55; // soft bounce
-                this.vy *= 0.8;
+                this.vx *= -0.55;
             }
         }
 
-        // stop at bottom
-        if (this.y > screenHeight - 10) {
-            this.active = false;
-        }
+        if (this.y > screenHeight - 10) this.active = false;
     }
 
     draw() {
@@ -260,9 +234,12 @@ class Ball {
     }
 }
 
+
+
+// balls array
 let balls = [];
 
-// Input
+// input
 canvas.addEventListener("click", () => balls.push(new Ball()));
 canvas.addEventListener("touchstart", e => {
     e.preventDefault();
@@ -270,15 +247,16 @@ canvas.addEventListener("touchstart", e => {
 }, { passive: false });
 
 window.addEventListener("resize", resizeCanvas);
+
 resizeCanvas();
+
 
 // DRAW
 function draw() {
     ctx.fillStyle = BG;
     ctx.fillRect(0, 0, screenWidth, screenHeight);
 
-    ctx.fillStyle = BOARD;
-
+    // draw pegs
     for (let [x, y] of pegLayout) {
         ctx.beginPath();
         ctx.arc(x, y, pegRadiusScaled, 0, Math.PI * 2);
@@ -286,10 +264,10 @@ function draw() {
         ctx.fill();
     }
 
-    // zigzag walls
-    ctx.strokeStyle = "#6666FF";
-    ctx.lineWidth = 3;
-    for (let seg of zigzagWalls) {
+    // diagonal walls
+    ctx.strokeStyle = "#66AAFF";
+    ctx.lineWidth = 4;
+    for (let seg of diagonalWalls) {
         ctx.beginPath();
         ctx.moveTo(seg.x1, seg.y1);
         ctx.lineTo(seg.x2, seg.y2);
@@ -301,8 +279,8 @@ function draw() {
     const binsStart = (screenWidth - binsWidth) / 2;
     const slotW = binsWidth / slotLabels.length;
 
-    ctx.lineWidth = 3;
     ctx.strokeStyle = DIVIDER;
+    ctx.lineWidth = 3;
     for (let i = 0; i <= slotLabels.length; i++) {
         const x = binsStart + i * slotW;
         ctx.beginPath();
@@ -311,13 +289,13 @@ function draw() {
         ctx.stroke();
     }
 
-    ctx.textAlign = "center";
+    // labels
     ctx.fillStyle = TEXT;
+    ctx.textAlign = "center";
     ctx.font = `${Math.floor(18 * scale)}px Arial`;
-
     for (let i = 0; i < slotLabels.length; i++) {
         const cx = binsStart + i * slotW + slotW / 2;
-        ctx.fillText(slotLabels[i], cx, slotYScaled + 30 * scale);
+        ctx.fillText(slotLabels[i], cx, slotYScaled + 20 * scale);
     }
 
     for (let b of balls) b.draw();
