@@ -19,8 +19,6 @@ const pegSpacingY = 38;
 
 // BINS
 const slotLabels = ["100", "250", "50", "500", "50", "250", "100"];
-const baseSlotY = 500;
-const baseSlotHeight = 90;
 
 // BALL PHYSICS
 const ballRadius = 7;
@@ -109,12 +107,12 @@ function resizeCanvas() {
     pegSpacingXScaled = pegSpacingX * scale;
     pegSpacingYScaled = pegSpacingY * scale;
 
-    // Lower peg field slightly below vertical center
-    const pegFieldHeight = (pegRowsPattern.length - 1) * pegSpacingYScaled;
-    pegStartYScaled = screenHeight / 2 - pegFieldHeight / 2 + screenHeight * 0.1; // move down 10% of screen height
+    // Pegs in middle of canvas
+    pegStartYScaled = screenHeight * 0.35;
 
-    slotYScaled = Math.round(screenHeight * 0.72);
-    slotHeightScaled = Math.round(screenHeight * 0.20);
+    // Bins far below
+    slotYScaled = screenHeight * 0.8;
+    slotHeightScaled = Math.round(screenHeight * 0.18);
 
     gravityScaled = gravityBase * (0.8 + scale * 0.4);
 
@@ -127,7 +125,7 @@ function resizeCanvas() {
 class Ball {
     constructor() {
         this.x = screenWidth / 2;
-        this.y = pegStartYScaled - 30; // spawn above peg field
+        this.y = pegStartYScaled - 50; // spawn well above peg field
         this.vx = (Math.random() - 0.5) * 0.8; 
         this.vy = 0;
         this.active = true;
