@@ -19,6 +19,8 @@ const pegSpacingY = 38;
 
 // BINS
 const slotLabels = ["100", "250", "50", "500", "50", "250", "100"];
+const baseSlotY = 500;
+const baseSlotHeight = 90;
 
 // BALL PHYSICS
 const ballRadius = 7;
@@ -109,7 +111,7 @@ function resizeCanvas() {
 
     // Center peg field vertically
     const pegFieldHeight = (pegRowsPattern.length - 1) * pegSpacingYScaled;
-    pegStartYScaled = (screenHeight - pegFieldHeight) / 2;
+    pegStartYScaled = screenHeight / 2 - pegFieldHeight / 2;
 
     slotYScaled = Math.round(screenHeight * 0.72);
     slotHeightScaled = Math.round(screenHeight * 0.20);
