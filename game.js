@@ -20,8 +20,8 @@ const slotYRatio = 0.8;       // relative position
 
 // BALL PHYSICS
 const ballRadius = 7;
-const gravityBase = 0.21;
-const friction = 0.985;
+const gravityBase = 0.12;   // lighter gravity
+const friction = 0.992;     // more floaty
 
 // SCALED VALUES
 let screenWidth, screenHeight;
