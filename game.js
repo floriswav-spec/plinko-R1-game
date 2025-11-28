@@ -16,7 +16,6 @@ const pegRadius = 5;
 const pegRowsPattern = [11, 12, 11, 12, 11, 12, 11];
 const pegSpacingX = 35;
 const pegSpacingY = 38;
-const pegStartY = 95;
 
 // BINS
 const slotLabels = ["100", "250", "50", "500", "50", "250", "100"];
@@ -62,11 +61,9 @@ function buildPegs() {
 function buildDiagonalWalls() {
     diagonalWalls = [];
 
-    // Range from top of peg field to bins
     const topY = pegStartYScaled - 20 * scale;
     const bottomY = slotYScaled;
 
-    // left diagonal wall
     diagonalWalls.push({
         x1: screenWidth * 0.18,
         y1: topY,
@@ -74,7 +71,6 @@ function buildDiagonalWalls() {
         y2: bottomY
     });
 
-    // right diagonal wall
     diagonalWalls.push({
         x1: screenWidth * 0.82,
         y1: topY,
@@ -112,7 +108,10 @@ function resizeCanvas() {
 
     pegSpacingXScaled = pegSpacingX * scale;
     pegSpacingYScaled = pegSpacingY * scale;
-    pegStartYScaled = pegStartY * scale;
+
+    // Center peg field vertically
+    const pegFieldHeight = (pegRowsPattern.length - 1) * pegSpacingYScaled;
+    pegStartYScaled = screenHeight / 2 - pegFieldHeight / 2;
 
     slotYScaled = Math.round(screenHeight * 0.72);
     slotHeightScaled = Math.round(screenHeight * 0.20);
@@ -123,7 +122,6 @@ function resizeCanvas() {
     buildDividers();
     buildDiagonalWalls();
 }
-
 
 // Ball class
 class Ball {
@@ -155,7 +153,7 @@ class Ball {
             this.vx *= -0.4;
         }
 
-        // peg collisions (soft)
+        // peg collisions
         for (let [px, py] of pegLayout) {
             const dx = this.x - px;
             const dy = this.y - py;
@@ -234,8 +232,6 @@ class Ball {
     }
 }
 
-
-
 // balls array
 let balls = [];
 
@@ -249,7 +245,6 @@ canvas.addEventListener("touchstart", e => {
 window.addEventListener("resize", resizeCanvas);
 
 resizeCanvas();
-
 
 // DRAW
 function draw() {
