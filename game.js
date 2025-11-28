@@ -19,8 +19,6 @@ const pegSpacingY = 38;
 
 // BINS
 const slotLabels = ["100", "250", "50", "500", "50", "250", "100"];
-const baseSlotY = 500;
-const baseSlotHeight = 90;
 
 // BALL PHYSICS
 const ballRadius = 7;
@@ -93,10 +91,14 @@ function buildDividers() {
     }
 }
 
-// Resize canvas
+// Resize canvas (portrait mode)
 function resizeCanvas() {
-    canvas.width = Math.floor(window.innerWidth * 0.95);
-    canvas.height = Math.floor(window.innerHeight * 0.95);
+    const maxWidth = window.innerWidth * 0.6;
+    const maxHeight = window.innerHeight * 0.95;
+
+    // Width smaller than height for portrait
+    canvas.width = Math.min(maxWidth, maxHeight * 0.5);
+    canvas.height = maxHeight;
 
     screenWidth = canvas.width;
     screenHeight = canvas.height;
@@ -111,10 +113,11 @@ function resizeCanvas() {
 
     // Center peg field vertically
     const pegFieldHeight = (pegRowsPattern.length - 1) * pegSpacingYScaled;
-    pegStartYScaled = screenHeight / 2 - pegFieldHeight / 2;
+    pegStartYScaled = (screenHeight - pegFieldHeight) / 2;
 
-    slotYScaled = Math.round(screenHeight * 0.72);
-    slotHeightScaled = Math.round(screenHeight * 0.20);
+    // Bins
+    slotYScaled = Math.round(screenHeight * 0.8);
+    slotHeightScaled = Math.round(screenHeight * 0.18);
 
     gravityScaled = gravityBase * (0.8 + scale * 0.4);
 
@@ -127,7 +130,7 @@ function resizeCanvas() {
 class Ball {
     constructor() {
         this.x = screenWidth / 2;
-        this.y = screenHeight * 0.05;
+        this.y = screenHeight * 0.05; // spawn near top
         this.vx = (Math.random() - 0.5) * 0.8; 
         this.vy = 0;
         this.active = true;
