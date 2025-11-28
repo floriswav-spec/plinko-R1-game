@@ -109,9 +109,9 @@ function resizeCanvas() {
     pegSpacingXScaled = pegSpacingX * scale;
     pegSpacingYScaled = pegSpacingY * scale;
 
-    // Center peg field vertically
+    // Lower peg field slightly below vertical center
     const pegFieldHeight = (pegRowsPattern.length - 1) * pegSpacingYScaled;
-    pegStartYScaled = screenHeight / 2 - pegFieldHeight / 2;
+    pegStartYScaled = screenHeight / 2 - pegFieldHeight / 2 + screenHeight * 0.1; // move down 10% of screen height
 
     slotYScaled = Math.round(screenHeight * 0.72);
     slotHeightScaled = Math.round(screenHeight * 0.20);
@@ -127,7 +127,7 @@ function resizeCanvas() {
 class Ball {
     constructor() {
         this.x = screenWidth / 2;
-        this.y = screenHeight * 0.05;
+        this.y = pegStartYScaled - 30; // spawn above peg field
         this.vx = (Math.random() - 0.5) * 0.8; 
         this.vy = 0;
         this.active = true;
