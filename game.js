@@ -1,13 +1,6 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// FIXED PORTRAIT SIZE
-const FIXED_WIDTH = 400;
-const FIXED_HEIGHT = 700;
-
-let screenWidth = FIXED_WIDTH;
-let screenHeight = FIXED_HEIGHT;
-
 // COLORS
 const BG = "#000000";
 const PEG_COLOR = "#D2D2DC";
@@ -22,18 +15,52 @@ const pegSpacingY = 38;
 
 // BINS
 const slotLabels = ["100", "250", "50", "500", "50", "250", "100"];
-const slotY = 560;
-const slotHeight = 120;
+const slotHeightRatio = 0.18; // relative to canvas height
+const slotYRatio = 0.8;       // relative position
 
 // BALL PHYSICS
 const ballRadius = 7;
-const gravity = 0.21;
+const gravityBase = 0.21;
 const friction = 0.985;
 
 // SCALED VALUES
+let screenWidth, screenHeight;
+let scale;
+let pegRadiusScaled, ballRadiusScaled;
+let pegSpacingXScaled, pegSpacingYScaled, pegStartYScaled;
+let slotYScaled, slotHeightScaled, gravityScaled;
 let pegLayout = [];
 let dividerPositions = [];
 let diagonalWalls = [];
+
+// ------------------ RESIZE ------------------
+function resizeCanvas() {
+    screenHeight = window.innerHeight * 0.95;
+    screenWidth = screenHeight * 0.57; // typical phone portrait ratio (~9:16)
+
+    canvas.width = screenWidth;
+    canvas.height = screenHeight;
+
+    scale = screenWidth / 400; // base design width 400
+
+    pegRadiusScaled = pegRadius * scale;
+    ballRadiusScaled = ballRadius * scale;
+    pegSpacingXScaled = pegSpacingX * scale;
+    pegSpacingYScaled = pegSpacingY * scale;
+
+    // Center peg field vertically
+    const pegFieldHeight = (pegRowsPattern.length - 1) * pegSpacingYScaled;
+    pegStartYScaled = (screenHeight - pegFieldHeight) / 2;
+
+    slotYScaled = screenHeight * slotYRatio;
+    slotHeightScaled = screenHeight * slotHeightRatio;
+
+    gravityScaled = gravityBase * (0.8 + scale * 0.4);
+
+    buildPegs();
+    buildDividers();
+    buildDiagonalWalls();
+}
 
 // ------------------ BUILD PEGS ------------------
 function buildPegs() {
@@ -42,11 +69,12 @@ function buildPegs() {
 
     for (let r = 0; r < pegRowsPattern.length; r++) {
         const cols = pegRowsPattern[r];
-        const rowWidth = (cols - 1) * pegSpacingX;
+        const rowWidth = (cols - 1) * pegSpacingXScaled;
         const startX = centerX - rowWidth / 2;
+
         for (let c = 0; c < cols; c++) {
-            const x = startX + c * pegSpacingX;
-            const y = (screenHeight - (pegRowsPattern.length - 1) * pegSpacingY) / 2 + r * pegSpacingY;
+            const x = startX + c * pegSpacingXScaled;
+            const y = pegStartYScaled + r * pegSpacingYScaled;
             pegLayout.push([x, y]);
         }
     }
@@ -55,9 +83,11 @@ function buildPegs() {
 // ------------------ BUILD DIAGONAL WALLS ------------------
 function buildDiagonalWalls() {
     diagonalWalls = [];
-    const pegTop = (screenHeight - (pegRowsPattern.length - 1) * pegSpacingY) / 2;
-    diagonalWalls.push({ x1: screenWidth * 0.18, y1: pegTop - 20, x2: screenWidth * 0.10, y2: slotY });
-    diagonalWalls.push({ x1: screenWidth * 0.82, y1: pegTop - 20, x2: screenWidth * 0.90, y2: slotY });
+    const topY = pegStartYScaled - 20 * scale;
+    const bottomY = slotYScaled;
+
+    diagonalWalls.push({ x1: screenWidth * 0.18, y1: topY, x2: screenWidth * 0.10, y2: bottomY });
+    diagonalWalls.push({ x1: screenWidth * 0.82, y1: topY, x2: screenWidth * 0.90, y2: bottomY });
 }
 
 // ------------------ BUILD DIVIDERS ------------------
@@ -76,8 +106,8 @@ function buildDividers() {
 class Ball {
     constructor() {
         this.x = screenWidth / 2;
-        this.y = 50; // spawn near top
-        this.vx = (Math.random() - 0.5) * 0.8;
+        this.y = 50 * scale;
+        this.vx = (Math.random() - 0.5) * 0.8 * scale;
         this.vy = 0;
         this.active = true;
     }
@@ -85,7 +115,7 @@ class Ball {
     update() {
         if (!this.active) return;
 
-        this.vy += gravity;
+        this.vy += gravityScaled;
         this.x += this.vx;
         this.y += this.vy;
 
@@ -93,19 +123,19 @@ class Ball {
         this.vy *= friction;
 
         // walls
-        if (this.x < ballRadius) { this.x = ballRadius; this.vx *= -0.4; }
-        if (this.x > screenWidth - ballRadius) { this.x = screenWidth - ballRadius; this.vx *= -0.4; }
+        if (this.x < ballRadiusScaled) { this.x = ballRadiusScaled; this.vx *= -0.4; }
+        if (this.x > screenWidth - ballRadiusScaled) { this.x = screenWidth - ballRadiusScaled; this.vx *= -0.4; }
 
         // peg collisions
         for (let [px, py] of pegLayout) {
             const dx = this.x - px;
             const dy = this.y - py;
             const dist = Math.hypot(dx, dy);
-            if (dist < pegRadius + ballRadius) {
+            if (dist < pegRadiusScaled + ballRadiusScaled) {
                 const angle = Math.atan2(dy, dx);
-                this.vx = Math.cos(angle) * 1.0;
-                this.vy = Math.sin(angle) * 1.0;
-                const overlap = pegRadius + ballRadius - dist;
+                this.vx = Math.cos(angle) * 1.0 * scale;
+                this.vy = Math.sin(angle) * 1.0 * scale;
+                const overlap = pegRadiusScaled + ballRadiusScaled - dist;
                 this.x += Math.cos(angle) * overlap;
                 this.y += Math.sin(angle) * overlap;
             }
@@ -126,11 +156,11 @@ class Ball {
             const dx = P.x - closestX;
             const dy = P.y - closestY;
             const dist = Math.hypot(dx, dy);
-            if (dist < ballRadius) {
+            if (dist < ballRadiusScaled) {
                 const angle = Math.atan2(dy, dx);
-                this.vx = Math.cos(angle) * 1.2;
-                this.vy = Math.sin(angle) * 1.2;
-                const overlap = ballRadius - dist;
+                this.vx = Math.cos(angle) * 1.2 * scale;
+                this.vy = Math.sin(angle) * 1.2 * scale;
+                const overlap = ballRadiusScaled - dist;
                 this.x += Math.cos(angle) * overlap;
                 this.y += Math.sin(angle) * overlap;
             }
@@ -142,7 +172,8 @@ class Ball {
         const slotW = binsWidth / slotLabels.length;
         for (let i = 0; i <= slotLabels.length; i++) {
             const dividerX = binsStart + i * slotW;
-            if (Math.abs(this.x - dividerX) < ballRadius * 1.15 && this.y >= slotY && this.y <= slotY + slotHeight) {
+            if (Math.abs(this.x - dividerX) < ballRadiusScaled * 1.15 &&
+                this.y >= slotYScaled && this.y <= slotYScaled + slotHeightScaled) {
                 this.vx *= -0.55;
             }
         }
@@ -152,12 +183,11 @@ class Ball {
 
     draw() {
         ctx.beginPath();
-        ctx.arc(this.x, this.y, ballRadius, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, ballRadiusScaled, 0, Math.PI * 2);
         ctx.fillStyle = "#FFEBC4";
         ctx.fill();
-
         ctx.beginPath();
-        ctx.arc(this.x, this.y, ballRadius - 2, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, ballRadiusScaled - 2, 0, Math.PI * 2);
         ctx.fillStyle = "#FFB450";
         ctx.fill();
     }
@@ -165,26 +195,22 @@ class Ball {
 
 // ------------------ GAME SETUP ------------------
 let balls = [];
-canvas.width = FIXED_WIDTH;
-canvas.height = FIXED_HEIGHT;
-
-buildPegs();
-buildDiagonalWalls();
-buildDividers();
+resizeCanvas();
 
 // input
 canvas.addEventListener("click", () => balls.push(new Ball()));
 canvas.addEventListener("touchstart", e => { e.preventDefault(); balls.push(new Ball()); }, { passive:false });
+
+window.addEventListener("resize", resizeCanvas);
 
 // ------------------ DRAW ------------------
 function draw() {
     ctx.fillStyle = BG;
     ctx.fillRect(0, 0, screenWidth, screenHeight);
 
-    // pegs
     for (let [x, y] of pegLayout) {
         ctx.beginPath();
-        ctx.arc(x, y, pegRadius, 0, Math.PI * 2);
+        ctx.arc(x, y, pegRadiusScaled, 0, Math.PI*2);
         ctx.fillStyle = PEG_COLOR;
         ctx.fill();
     }
@@ -206,20 +232,20 @@ function draw() {
     ctx.strokeStyle = DIVIDER;
     ctx.lineWidth = 3;
     for (let i = 0; i <= slotLabels.length; i++) {
-        const x = binsStart + i * slotW;
+        const x = binsStart + i*slotW;
         ctx.beginPath();
-        ctx.moveTo(x, slotY);
-        ctx.lineTo(x, slotY + slotHeight);
+        ctx.moveTo(x, slotYScaled);
+        ctx.lineTo(x, slotYScaled + slotHeightScaled);
         ctx.stroke();
     }
 
     // labels
     ctx.fillStyle = TEXT;
     ctx.textAlign = "center";
-    ctx.font = `18px Arial`;
+    ctx.font = `${16*scale}px Arial`;
     for (let i = 0; i < slotLabels.length; i++) {
-        const cx = binsStart + i * slotW + slotW/2;
-        ctx.fillText(slotLabels[i], cx, slotY + 20);
+        const cx = binsStart + i*slotW + slotW/2;
+        ctx.fillText(slotLabels[i], cx, slotYScaled + 20*scale);
     }
 
     for (let b of balls) b.draw();
