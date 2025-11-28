@@ -1,12 +1,24 @@
 body {
     margin: 0;
-    background-color: #000; /* matches BG */
+    background-color: #000;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    overflow: hidden;
 }
+
+/* Let the JS control the canvas pixel size; keep CSS to center + max size */
 canvas {
     border: 0;
     image-rendering: pixelated;
+    max-width: 95vw;
+    max-height: 95vh;
+    width: auto;
+    height: auto;
+    display: block;
 }
